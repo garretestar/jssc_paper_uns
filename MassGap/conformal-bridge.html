@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conformal Bridge Explorer - QSNV</title>
+    <!-- Load Plotly.js for professional scientific graphing -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 900px;
+            width: 100%;
+        }
+        h2 { margin-top: 0; color: #2c3e50; }
+        .description { font-size: 16px; color: #555; margin-bottom: 20px; }
+        
+        /* Slider Styling */
+        .controls {
+            margin-top: 30px;
+            padding: 20px;
+            background: #eef2f5;
+            border-radius: 8px;
+            border: 1px solid #d1d9e0;
+        }
+        .slider-wrapper { display: flex; align-items: center; gap: 15px; }
+        input[type=range] { flex-grow: 1; cursor: pointer; }
+        .alpha-label { font-size: 18px; font-weight: bold; width: 150px;}
+        
+        /* Output Values Styling */
+        .outputs {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        .val-box { padding: 10px 20px; border-radius: 6px; background: white; border: 1px solid #ccc;}
+        .val-blue { border-left: 5px solid #1f77b4; }
+        .val-red { border-left: 5px solid #d62728; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>The Conformal Bridge: Altitude Explorer</h2>
+        <div class="description">
+            This interactive tool visualizes the continuous translation of the repulsive throat ($V^\mathbf{w}_3$). 
+            Notice how the topological singularity in the 3D Substrate (the asymptote at $\alpha = -0.5$) 
+            is structurally resolved into a perfectly smooth, continuous linear function when the geometry extends into the 4D Substrate.
+        </div>
+
+        <!-- The Graph will render here -->
+        <div id="plot"></div>
+
+        <div class="controls">
+            <div class="slider-wrapper">
+                <div class="alpha-label">Base Translation &alpha;: <br><span id="alpha-val" style="color:#2c3e50; font-size: 24px;">1.00</span></div>
+                <input type="range" id="alpha-slider" min="-2.5" max="1.5" step="0.01" value="1">
+            </div>
+
+            <div class="outputs">
+                <div class="val-box val-blue">
+                    <strong>4D Altitude (&alpha;<sub>4</sub>):</strong> <br>
+                    <span id="val-4d">-2.333</span>
+                </div>
+                <div class="val-box val-red">
+                    <strong>3D Altitude (&gamma;):</strong> <br>
+                    <span id="val-3d">-0.667</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate the data arrays for the graph
+        const xValues = [];
+        const y3D = [];
+        const y4D = [];
+
+        for (let x = -2.5; x <= 1.5; x += 0.005) {
+            xValues.push(x);
+            // 4D Linear Altitude
+            y4D.push(-(x + 4/3));
+
+            // 3D Rational Altitude (Handle the asymptote so the line breaks cleanly)
+            if (Math.abs(1 + 2 * x) < 0.02) {
+                y3D.push(null); 
+            } else {
+                y3D.push(-(x * (1 + x)) / (1 + 2 * x));
+            }
+        }
+
+        // Configure the traces (the lines on the graph)
+        const trace4D = {
+            x: xValues, y: y4D,
+            mode: 'lines',
+            name: '4D Altitude (α₄)',
+            line: { color: '#1f77b4', width: 3 }
+        };
+
+        const trace3D = {
+            x: xValues, y: y3D,
+            mode: 'lines',
+            name: '3D Altitude (γ)',
+            line: { color: '#d62728', width: 3 }
+        };
+
+        // The black dot that follows the slider
+        const traceDot = {
+            x: [1], y: [-(1 + 4/3)],
+            mode: 'markers',
+            name: 'Current State',
+            marker: { size: 12, color: 'black' },
+            showlegend: false
+        };
+
+        // Configure the graph layout
+        const layout = {
+            title: 'Resolution of Topological Singularity via Dimensional Extension',
+            xaxis: { title: 'Base Translation Parameter (α)', range: [-2.5, 1.5], zeroline: true },
+            yaxis: { title: 'Orthogonal Altitude Required', range: [-4, 4], zeroline: true },
+            margin: { t: 50, b: 50, l: 50, r: 20 },
+            hovermode: 'closest',
+            shapes: [
+                {
+                    type: 'line', x0: -0.5, x1: -0.5, y0: -4, y1: 4,
+                    line: { color: 'gray', width: 2, dash: 'dash' }
+                }
+            ],
+            annotations: [{
+                x: -0.5, y: 3.5,
+                xref: 'x', yref: 'y',
+                text: 'Asymptote at α = -1/2',
+                showarrow: true, arrowhead: 2, ax: -60, ay: 0
+            }]
+        };
+
+        // Render the graph
+        Plotly.newPlot('plot', [trace3D, trace4D, traceDot], layout, {responsive: true});
+
+        // Interactivity: Hook up the slider to update the numbers and the black dot
+        const slider = document.getElementById('alpha-slider');
+        const alphaValDisplay = document.getElementById('alpha-val');
+        const val4dDisplay = document.getElementById('val-4d');
+        const val3dDisplay = document.getElementById('val-3d');
+
+        slider.addEventListener('input', function() {
+            const a = parseFloat(this.value);
+            
+            // Update the text values
+            alphaValDisplay.textContent = a.toFixed(2);
+            
+            const a4 = -(a + 4/3);
+            val4dDisplay.textContent = a4.toFixed(3);
+
+            let gamma = "Singularity (∞)";
+            let gNum = -(a * (1 + a)) / (1 + 2 * a);
+            // Check if we are at or extremely close to the asymptote
+            if (Math.abs(1 + 2*a) > 0.005) {
+                gamma = gNum.toFixed(3);
+            }
+            val3dDisplay.textContent = gamma;
+
+            // Move the black dot on the 4D line
+            Plotly.update('plot', { x: [[a]], y: [[a4]] }, {}, [2]);
+        });
+    </script>
+</body>
+</html>
